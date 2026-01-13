@@ -65,11 +65,17 @@ dependencies = [
 [project.optional-dependencies]
 # To install the WebUI support, use `uv sync --extra webui` (or `--all-extras`).
 webui = [
-  "gradio==5.45.0",
+   "gradio==5.45.0",
 ]
 # To install the DeepSpeed support, use `uv sync --extra deepspeed` (or `--all-extras`).
 deepspeed = [
-  "deepspeed==0.17.1",
+   "deepspeed==0.17.1",
+]
+# To install the API support, use `uv sync --extra api` (or `--all-extras`).
+api = [
+   "fastapi==0.115.6",
+   "uvicorn[standard]==0.32.1",
+   "python-multipart==0.0.17",
 ]
 
 [project.urls]
