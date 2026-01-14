@@ -208,6 +208,61 @@ warnings.filterwarnings("ignore", category=UserWarning)
 - Use DeepSpeed for large model inference
 - Profile code with PyTorch profiler when optimizing
 
+## API Usage
+
+### FastAPI Server
+The project includes a FastAPI server for programmatic access to TTS functionality:
+
+```bash
+# Install API dependencies
+uv sync --extra api
+
+# Start the FastAPI server
+uv run api.py
+
+# Server will be available at http://localhost:8000
+# API documentation at http://localhost:8000/docs
+```
+
+### API Endpoints
+
+#### Health Check
+- **GET** `/health` - Check service status and model loading state
+
+#### Speech Generation
+- **POST** `/generate` - Generate speech from text with full control options
+  - Parameters: text, speaker audio prompt, emotion controls, generation settings
+  - Returns: audio file path and duration
+
+#### File Upload
+- **POST** `/upload` - Upload audio files for reference
+  - Accepts: WAV, MP3, FLAC, OGG files
+  - Returns: file path for use in generation requests
+
+#### Audio Retrieval
+- **GET** `/audio/{path}` - Download generated audio files
+
+### Example API Usage
+
+```python
+import requests
+
+# Generate speech
+response = requests.post("http://localhost:8000/generate", json={
+    "text": "Hello, this is a test of IndexTTS2!",
+    "spk_audio_prompt": "examples/voice_01.wav",
+    "emo_alpha": 0.8
+})
+
+result = response.json()
+audio_path = result["audio_path"]
+
+# Download audio
+audio_response = requests.get(f"http://localhost:8000/audio/{audio_path}")
+with open("generated.wav", "wb") as f:
+    f.write(audio_response.content)
+```
+
 ## Contributing
 - Follow the established code style and patterns
 - Test changes thoroughly
