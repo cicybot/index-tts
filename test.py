@@ -54,16 +54,16 @@ print("\n===== TTS Benchmark =====\n")
 for i, text in enumerate(test_list, 1):
     torch.cuda.synchronize()
     start = time.perf_counter()
-
+    output_path=f"/content/gen_{i}.wav"
     tts.infer(
         spk_audio_prompt='/content/data/assets/voice_01.wav',
         text=text,
-        output_path=f"/content/gen_{i}.wav",
+        output_path=output_path,
         verbose=False
     )
 
     torch.cuda.synchronize()
     end = time.perf_counter()
 
-    print(f"[{i}] Text: {text}")
+    print(f"[{i}] Text: {text} | output_path:{output_path}")
     print(f"    ⏱️ Inference time: {end - start:.3f} seconds\n")
