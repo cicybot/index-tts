@@ -33,7 +33,7 @@ tts = IndexTTS2(
 tts.infer(
     spk_audio_prompt='/content/data/assets/voice_01.wav',
     text="hello",
-    output_path="warmup.wav",
+    output_path="/content/warmup.wav",
     verbose=False
 )
 torch.cuda.synchronize()
@@ -58,7 +58,7 @@ for i, text in enumerate(test_list, 1):
     tts.infer(
         spk_audio_prompt='/content/data/assets/voice_01.wav',
         text=text,
-        output_path=f"gen_{i}.wav",
+        output_path=f"/content/gen_{i}.wav",
         verbose=False
     )
 
