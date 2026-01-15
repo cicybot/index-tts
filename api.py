@@ -18,7 +18,7 @@ TASK_FOLDER.mkdir(parents=True, exist_ok=True)
 # --------------------
 # 静态文件目录（供 /media 使用）
 # --------------------
-MEDIA_FOLDER = Path("./media")
+MEDIA_FOLDER = Path("./tasks")
 MEDIA_FOLDER.mkdir(parents=True, exist_ok=True)
 # --------------------
 # FastAPI app
@@ -38,6 +38,8 @@ class TTSRequest(BaseModel):
 @app.get("/", include_in_schema=False)
 def root_redirect():
     return RedirectResponse(url="/docs")
+
+app.mount("/media", StaticFiles(directory=MEDIA_FOLDER), name="media")
 
 # --------------------
 # API 接口
