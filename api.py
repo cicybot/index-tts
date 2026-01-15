@@ -23,40 +23,40 @@ app = FastAPI(title="IndexTTS TTS API")
 # 内存任务队列
 # --------------------
 task_queue: asyncio.Queue = asyncio.Queue(maxsize=32)
+
+from pydantic import BaseModel, Field
+from typing import List, Optional
+
+class TTSParams(BaseModel):
+    # --- 必填 ---
+    text: str = Field(..., description="待生成文本，必填")
+
+    # --- 可选 ---
+    spk_audio_prompt: Optional[str] = Field(None, description="示例音频路径，用于声音克隆")
+    prompt_text: Optional[str] = Field(None, description="参考文本，可选")
+    emo_vector: Optional[List[float]] = Field(
+        None,
+        description="情绪向量 [happy, angry, sad, afraid, disgusted, melancholic, surprised, calm], 长度 8"
+    )
+    cfg_value: Optional[float] = Field(2.0, description="LM guidance，文本约束强度")
+    inference_timesteps: Optional[int] = Field(10, description="LocDiT 推理步数，越高越精细")
+    normalize: Optional[bool] = Field(False, description="是否启用外部 TN 工具")
+    denoise: Optional[bool] = Field(False, description="是否启用外部 Denoise 工具")
+    retry_badcase: Optional[bool] = Field(True, description="是否开启自动重试")
+    retry_badcase_max_times: Optional[int] = Field(3, description="最大重试次数")
+    retry_badcase_ratio_threshold: Optional[float] = Field(6.0, description="重试检测阈值")
+    use_random: Optional[bool] = Field(False, description="是否随机化生成")
+    output_path: Optional[str] = Field(None, description="输出 wav 文件路径，不填自动生成")
+    verbose: Optional[bool] = Field(False, description="是否打印推理日志")
+
 class TTSRequest(BaseModel):
     """
     TTS 请求体模型
     params 字典会直接传给 IndexTTS2.infer。
     前端可以根据需求传入任意 infer 支持的参数。
     """
+    params: TTSParams
 
-    params: Dict[str, Any] = Field(
-        ...,
-        description="""
-可控参数示例：
-{
-    "text": "待生成的文本，必填",
-    "spk_audio_prompt": "示例音频路径，可选，用于声音克隆",
-    "prompt_text": "参考文本，可选",
-    "emo_vector": [0,0,0,0,0,0,0.5,0],  # 情绪向量，顺序: [happy, angry, sad, afraid, disgusted, melancholic, surprised, calm]
-    "cfg_value": 2.0,       # LM guidance，数值越大，文本约束越强
-    "inference_timesteps": 10,  # LocDiT 推理步数，越高效果越好但慢
-    "normalize": false,     # 是否启用外部 TN 工具
-    "denoise": false,       # 是否启用外部 denoise 工具
-    "retry_badcase": true,  # 是否开启自动重试
-    "retry_badcase_max_times": 3,
-    "retry_badcase_ratio_threshold": 6.0,
-    "use_random": false,    # 是否随机化生成
-    "output_path": "./tasks/xxx.wav",  # 输出文件路径，可选，不填自动生成
-    "verbose": true         # 是否打印推理日志
-}
-注意事项：
-1. text 是必填字段。
-2. output_path 可以不填，worker 会自动生成。
-3. emo_vector 长度必须为 8。
-4. 其他参数可选，根据 IndexTTS2.infer 支持的参数传入。
-"""
-    )
 
 
 # --------------------
