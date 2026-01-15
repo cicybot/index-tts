@@ -9,7 +9,7 @@ import time
 # --------------------
 # 任务存储路径
 # --------------------
-TASK_FOLDER = Path("./tasks")
+TASK_FOLDER = Path("/tmp")
 TASK_FOLDER.mkdir(exist_ok=True)
 
 # --------------------

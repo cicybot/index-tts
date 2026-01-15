@@ -7,7 +7,7 @@ from pathlib import Path
 
 # 内存队列，后续可改成 Redis
 task_queue = asyncio.Queue(maxsize=32)
-TASK_FOLDER = Path("./tmp")
+TASK_FOLDER = Path("/tmp")
 TASK_FOLDER.mkdir(exist_ok=True)
 
 app = FastAPI(title="IndexTTS Task Server")
