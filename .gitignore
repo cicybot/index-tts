@@ -33,3 +33,13 @@ desktop.ini
 .venv
 .idea
 tasks
+
+# Frontend (Node.js/React/Vite)
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+*.log
+.env
+.env.local
+.env.production
+.env.development

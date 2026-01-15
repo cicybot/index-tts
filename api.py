@@ -2,12 +2,13 @@ import asyncio
 import time
 import uuid
 import json
+import base64
 from pathlib import Path
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import RedirectResponse,HTMLResponse,FileResponse
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import RedirectResponse, HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
-from typing import List, Optional,Dict,Any
+from typing import List, Optional, Dict, Any
 import urllib.parse
 
 # --------------------
@@ -27,10 +28,13 @@ MEDIA_FOLDER.mkdir(parents=True, exist_ok=True)
 app = FastAPI(title="IndexTTS TTS API")
 
 
-
 class TTSRequest(BaseModel):
     params: Dict[str, Any]
 
+
+class TasksResponse(BaseModel):
+    total: int
+    tasks: List[Dict[str, Any]]
 
 
 # --------------------
@@ -39,7 +43,6 @@ class TTSRequest(BaseModel):
 @app.get("/", include_in_schema=False)
 def root_redirect():
     return RedirectResponse(url="/docs")
-
 
 
 @app.get("/media", response_class=HTMLResponse)
@@ -54,6 +57,7 @@ def media_index():
     html += "</ul>"
     return HTMLResponse(content=html)
 
+
 @app.get("/media/{filename}")
 def media_file(filename: str):
     """Serve a file from MEDIA_FOLDER."""
@@ -62,9 +66,11 @@ def media_file(filename: str):
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(path=file_path, filename=file_path.name)
 
+
 # --------------------
 # API 接口
 # --------------------
+
 
 # --------------------
 # TTS提交接口
@@ -111,10 +117,9 @@ def media_file(filename: str):
     "verbose": true
   }
 }
-"""
+""",
 )
 async def submit_tts(req: TTSRequest):
-
     task_id = str(uuid.uuid4())
     task_data = {
         "id": task_id,
@@ -122,29 +127,132 @@ async def submit_tts(req: TTSRequest):
         "result": None,
         "worker_id": None,
         "submit_time": time.time(),
-        "params": req.params
+        "params": req.params,
     }
     (TASK_FOLDER / f"{task_id}.json").write_text(json.dumps(task_data))
     return {"task_id": task_id}
 
 
-@app.get("/tts/{task_id}")
+@app.get(
+    "/tts/{task_id}",
+    summary="Get a specific TTS task by ID",
+    description="""
+Get details of a specific TTS task by its ID.
+
+**Path Parameters**:
+
+- `task_id`: str, The unique identifier of the task (UUID).
+
+**Response**:
+
+A task object containing:
+- `id`: str, Unique task identifier (UUID).
+- `status`: str, Current task status (`pending`, `running`, `done`, `error`).
+- `result`: str or null, Path to the generated audio file (only present if status is `done`).
+- `audio_data`: str or null, Base64-encoded audio data with data URI prefix (only present if status is `done` and audio file exists).
+- `worker_id`: str or null, ID of the worker processing the task.
+- `submit_time`: float, Timestamp when the task was submitted.
+- `start_time`: float or null, Timestamp when processing started (only present if status is `running` or later).
+- `end_time`: float or null, Timestamp when processing ended (only present if status is `done` or `error`).
+- `duration`: float or null, Processing time in seconds.
+- `params`: dict, TTS parameters used for the task.
+- `error`: str or null, Error message (only present if status is `error`).
+
+**Example Response** (status: done):
+
+```json
+{
+  "id": "123e4567-e89b-12d3-a456-426614174000",
+  "status": "done",
+  "result": "tasks/123e4567-e89b-12d3-a456-426614174000.wav",
+  "audio_data": "data:audio/wav;base64,UklGRnoGAABXQVZFZm10...",
+  "worker_id": "worker-uuid",
+  "submit_time": 1700000000.0,
+  "start_time": 1700000001.0,
+  "end_time": 1700000010.0,
+  "duration": 9.0,
+  "params": {"text": "Hello", "spk_audio_prompt": "examples/voice_01.wav"}
+}
+```
+""",
+)
 def get_task(task_id: str):
     task_file = TASK_FOLDER / f"{task_id}.json"
     if not task_file.exists():
         raise HTTPException(status_code=404, detail="Task not found")
-    return json.loads(task_file.read_text())
+    task_data = json.loads(task_file.read_text())
+    if task_data.get("status") == "done" and task_data.get("result"):
+        audio_path = Path(task_data["result"])
+        if audio_path.exists():
+            with open(audio_path, "rb") as f:
+                audio_bytes = f.read()
+            audio_data = (
+                f"data:audio/wav;base64,{base64.b64encode(audio_bytes).decode('utf-8')}"
+            )
+            task_data["audio_data"] = audio_data
+    return task_data
 
 
-@app.get("/tasks")
-def get_all_tasks():
+@app.get(
+    "/tasks",
+    response_model=TasksResponse,
+    summary="Get TTS tasks filtered by status",
+    description="""
+Get a list of TTS tasks filtered by their status.
+
+**Query Parameters**:
+
+- `status`: str, Filter tasks by status. Options: `pending`, `running`, `done`, `error`. Default: `done`.
+
+**Response**:
+
+- `total`: int, Total number of tasks matching the filter.
+- `tasks`: list, Array of task objects. Each task object contains:
+  - `id`: str, Unique task identifier (UUID).
+  - `status`: str, Current task status (`pending`, `running`, `done`, `error`).
+  - `result`: str or null, Path to the generated audio file (only present if status is `done`).
+  - `worker_id`: str or null, ID of the worker processing the task.
+  - `submit_time`: float, Timestamp when the task was submitted.
+  - `start_time`: float or null, Timestamp when processing started (only present if status is `running` or later).
+  - `end_time`: float or null, Timestamp when processing ended (only present if status is `done` or `error`).
+  - `duration`: float or null, Processing time in seconds.
+  - `params`: dict, TTS parameters used for the task.
+  - `error`: str or null, Error message (only present if status is `error`).
+
+**Example Response**:
+
+```json
+{
+  "total": 2,
+  "tasks": [
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174000",
+      "status": "done",
+      "result": "tasks/123e4567-e89b-12d3-a456-426614174000.wav",
+      "worker_id": "worker-uuid",
+      "submit_time": 1700000000.0,
+      "params": {"text": "Hello", "spk_audio_prompt": "examples/voice_01.wav"}
+    }
+  ]
+}
+```
+""",
+)
+def get_all_tasks(
+    status: str = Query(
+        "done", description="Filter tasks by status: pending, running, done, error"
+    ),
+):
+    """Get list of TTS tasks filtered by status."""
     tasks = []
     for task_file in TASK_FOLDER.glob("*.json"):
         try:
-            tasks.append(json.loads(task_file.read_text()))
+            task_data = json.loads(task_file.read_text())
+            if task_data.get("status") == status:
+                tasks.append(task_data)
         except:
             continue
-    return {"total": len(tasks), "tasks": tasks}
+    return TasksResponse(total=len(tasks), tasks=tasks)
 
 
 # --------------------
@@ -152,9 +260,10 @@ def get_all_tasks():
 # --------------------
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
-        "api:app",      # 注意这里用字符串：模块名:app
+        "api:app",  # 注意这里用字符串：模块名:app
         host="0.0.0.0",
         port=8000,
-        reload=True,    # 开启自动重载
-     )
+        reload=True,  # 开启自动重载
+    )

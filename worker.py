@@ -26,17 +26,17 @@ tts_model = IndexTTS2(
     model_dir="checkpoints",
     use_fp16=True,
     use_cuda_kernel=False,
-    use_deepspeed=False
+    use_deepspeed=False,
 )
 print(f"[Worker {WORKER_ID}] Model loaded. Warmup starting...")
 
 # warmup
 warmup_path = TASK_FOLDER / "warmup.wav"
 tts_model.infer(
-    spk_audio_prompt='examples/voice_01.wav',
+    spk_audio_prompt="examples/voice_01.wav",
     text="Warmup",
     output_path=str(warmup_path),
-    verbose=True
+    verbose=True,
 )
 torch.cuda.synchronize()
 print(f"[Worker {WORKER_ID}] Warmup done: {warmup_path}")
@@ -53,7 +53,9 @@ def run_indextts_task(task_file):
         return
 
     if task_data.get("status") != "pending":
-        print(f"[Worker {WORKER_ID}] Skipping task {task_data.get('id')} (status: {task_data.get('status')})")
+        print(
+            f"[Worker {WORKER_ID}] Skipping task {task_data.get('id')} (status: {task_data.get('status')})"
+        )
         return
 
     task_id = task_data["id"]
@@ -65,15 +67,19 @@ def run_indextts_task(task_file):
 
     # 如果缺少 spk_audio_prompt，自动补充
     if "spk_audio_prompt" not in task_params:
-        task_params["spk_audio_prompt"] = 'examples/voice_01.wav'
-        print(f"[Worker {WORKER_ID}] Task {task_id} missing spk_audio_prompt, using default.")
+        task_params["spk_audio_prompt"] = "examples/voice_01.wav"
+        print(
+            f"[Worker {WORKER_ID}] Task {task_id} missing spk_audio_prompt, using default."
+        )
 
     # 更新状态为 running
     task_data["status"] = "running"
     task_data["worker_id"] = WORKER_ID
     task_data["start_time"] = time.time()
     task_file.write_text(json.dumps(task_data, ensure_ascii=False, indent=2))
-    print(f"[Worker {WORKER_ID}] [RUNNING] Task {task_id} started at {task_data['start_time']:.2f}")
+    print(
+        f"[Worker {WORKER_ID}] [RUNNING] Task {task_id} started at {task_data['start_time']:.2f}"
+    )
 
     try:
         # 调用 TTS 生成音频
@@ -87,16 +93,22 @@ def run_indextts_task(task_file):
         task_data["end_time"] = time.time()
         task_data["duration"] = task_data["end_time"] - task_data["start_time"]
         task_file.write_text(json.dumps(task_data, ensure_ascii=False, indent=2))
-        print(f"[Worker {WORKER_ID}] [DONE] Task {task_id} completed in {task_data['duration']:.2f}s, output: {task_params['output_path']}")
+        print(
+            f"[Worker {WORKER_ID}] [DONE] Task {task_id} completed in {task_data['duration']:.2f}s, output: {task_params['output_path']}"
+        )
 
     except Exception as e:
         # 更新状态为 error
         task_data["status"] = "error"
         task_data["error"] = str(e)
         task_data["end_time"] = time.time()
-        task_data["duration"] = task_data["end_time"] - task_data.get("start_time", task_data["end_time"])
+        task_data["duration"] = task_data["end_time"] - task_data.get(
+            "start_time", task_data["end_time"]
+        )
         task_file.write_text(json.dumps(task_data, ensure_ascii=False, indent=2))
-        print(f"[Worker {WORKER_ID}] [ERROR] Task {task_id} failed after {task_data['duration']:.2f}s: {e}")
+        print(
+            f"[Worker {WORKER_ID}] [ERROR] Task {task_id} failed after {task_data['duration']:.2f}s: {e}"
+        )
 
 
 # --------------------

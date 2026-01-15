@@ -28,11 +28,30 @@ uv run webui.py
 # Run FastAPI server
 uv run api.py
 
+# Run worker for background TTS task processing
+uv run worker.py
+
 # Run GPU check utility
 uv run tools/gpu_check.py
 
 # Run inference
 PYTHONPATH="$PYTHONPATH:." uv run indextts/infer_v2.py
+```
+
+### Linting and Formatting
+Use Ruff for linting and Black for code formatting:
+```bash
+# Install linting/formatting tools
+uv add --dev ruff black mypy
+
+# Lint code
+uv run ruff check .
+
+# Format code
+uv run black .
+
+# Type check
+uv run mypy indextts/
 ```
 
 ### Testing
@@ -45,11 +64,11 @@ uv run tests/regression_test.py
 # Run padding tests
 uv run tests/padding_test.py
 
-# Run a specific test file
-PYTHONPATH="$PYTHONPATH:." uv run tests/specific_test.py
+# Run a specific test file (e.g., regression_test.py)
+PYTHONPATH="$PYTHONPATH:." uv run tests/regression_test.py
 ```
 
-**Note**: There is no centralized test runner (like pytest). Each test file is a standalone script that can be executed directly.
+**Note**: There is no centralized test runner (like pytest). Each test file is a standalone script that can be executed directly. To run a single test, execute the specific file with the required PYTHONPATH.
 
 ### Model Management
 ```bash
@@ -121,6 +140,22 @@ def __init__(
         use_fp16: Whether to use half-precision
     """
 ```
+
+### Linting
+- Use Ruff for code quality and style checks
+- Run `uv run ruff check .` to check for issues
+- Auto-fix safe issues: `uv run ruff check --fix .`
+- Configure rules in pyproject.toml if needed
+
+### Formatting
+- Use Black for consistent code formatting
+- Line length: 88 characters (Black default)
+- Run `uv run black .` to format all Python files
+
+### Type Checking
+- Use mypy for static type analysis
+- Run `uv run mypy indextts/` to check types
+- Configure strictness in mypy.ini or pyproject.toml
 
 ### Error Handling
 - Use try/except for optional dependencies
@@ -207,61 +242,6 @@ warnings.filterwarnings("ignore", category=UserWarning)
 - Leverage CUDA kernels for GPU operations
 - Use DeepSpeed for large model inference
 - Profile code with PyTorch profiler when optimizing
-
-## API Usage
-
-### FastAPI Server
-The project includes a FastAPI server for programmatic access to TTS functionality:
-
-```bash
-# Install API dependencies
-uv sync --extra api
-
-# Start the FastAPI server
-uv run api.py
-
-# Server will be available at http://localhost:8000
-# API documentation at http://localhost:8000/docs
-```
-
-### API Endpoints
-
-#### Health Check
-- **GET** `/health` - Check service status and model loading state
-
-#### Speech Generation
-- **POST** `/generate` - Generate speech from text with full control options
-  - Parameters: text, speaker audio prompt, emotion controls, generation settings
-  - Returns: audio file path and duration
-
-#### File Upload
-- **POST** `/upload` - Upload audio files for reference
-  - Accepts: WAV, MP3, FLAC, OGG files
-  - Returns: file path for use in generation requests
-
-#### Audio Retrieval
-- **GET** `/audio/{path}` - Download generated audio files
-
-### Example API Usage
-
-```python
-import requests
-
-# Generate speech
-response = requests.post("http://localhost:8000/generate", json={
-    "text": "Hello, this is a test of IndexTTS2!",
-    "spk_audio_prompt": "examples/voice_01.wav",
-    "emo_alpha": 0.8
-})
-
-result = response.json()
-audio_path = result["audio_path"]
-
-# Download audio
-audio_response = requests.get(f"http://localhost:8000/audio/{audio_path}")
-with open("generated.wav", "wb") as f:
-    f.write(audio_response.content)
-```
 
 ## Contributing
 - Follow the established code style and patterns
