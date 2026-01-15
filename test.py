@@ -7,7 +7,7 @@ from indextts.infer_v2 import IndexTTS2
 # --------------------
 # Path fix
 # --------------------
-ROOT_DIR = "/content/index-tts"
+ROOT_DIR = "/content/tts"
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
@@ -31,7 +31,7 @@ tts = IndexTTS2(
 # Warmup (非常重要)
 # --------------------
 tts.infer(
-    spk_audio_prompt='/content/data/assets/voice_01.wav',
+    spk_audio_prompt='/content/tts/examples/voice_01.wav',
     text="hello",
     output_path="/content/warmup.wav",
     verbose=False
@@ -56,7 +56,7 @@ for i, text in enumerate(test_list, 1):
     start = time.perf_counter()
     output_path=f"/content/gen_{i}.wav"
     tts.infer(
-        spk_audio_prompt='/content/data/assets/voice_01.wav',
+        spk_audio_prompt='/content/tts/examples/voice_01.wav',
         text=text,
         output_path=output_path,
         verbose=False
@@ -67,3 +67,7 @@ for i, text in enumerate(test_list, 1):
 
     print(f"[{i}] Text: {text} | output_path:{output_path}")
     print(f"    ⏱️ Inference time: {end - start:.3f} seconds\n")
+
+
+text = "酒楼丧尽天良，开始借机竞拍房间，哎，一群蠢货。"
+tts.infer(spk_audio_prompt='examples/voice_07.wav', text=text, output_path="/content/gen.wav", emo_audio_prompt="/content/tts/examples/emo_sad.wav", verbose=True)
