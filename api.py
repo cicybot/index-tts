@@ -37,6 +37,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount frontend static files
+app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="frontend")
+
 
 class TTSRequest(BaseModel):
     params: Dict[str, Any]
@@ -48,33 +51,9 @@ class TasksResponse(BaseModel):
 
 
 # --------------------
-# 路由: / 重定向到 /docs
+# Frontend served at /
+# API docs at /docs
 # --------------------
-@app.get("/", include_in_schema=False)
-def root_redirect():
-    return RedirectResponse(url="/docs")
-
-
-@app.get("/media", response_class=HTMLResponse)
-def media_index():
-    """List all files in MEDIA_FOLDER as clickable links."""
-    files = sorted(MEDIA_FOLDER.iterdir(), key=lambda f: f.name)
-    html = "<h2>Media Directory</h2><ul>"
-    for f in files:
-        if f.is_file():
-            url_path = urllib.parse.quote(f.name)
-            html += f'<li><a href="/media/{url_path}">{f.name}</a></li>'
-    html += "</ul>"
-    return HTMLResponse(content=html)
-
-
-@app.get("/media/{filename}")
-def media_file(filename: str):
-    """Serve a file from MEDIA_FOLDER."""
-    file_path = MEDIA_FOLDER / filename
-    if not file_path.exists() or not file_path.is_file():
-        raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(path=file_path, filename=file_path.name)
 
 
 # --------------------
