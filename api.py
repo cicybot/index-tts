@@ -1,84 +1,68 @@
 import asyncio
-import base64
+import uuid
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from indextts.infer import IndexTTS
-import numpy as np
+import json
+from pathlib import Path
 
-# ==============================
-# FastAPI 应用
-# ==============================
-app = FastAPI(title="IndexTTS High-Concurrency Demo", version="0.1.0")
+# 内存队列，后续可改成 Redis
+task_queue = asyncio.Queue(maxsize=32)
+TASK_FOLDER = Path("./tmp")
+TASK_FOLDER.mkdir(exist_ok=True)
 
-# ==============================
-# 全局 TTS 模型和队列
-# ==============================
-tts_model: IndexTTS = None
-tts_queue: asyncio.Queue = asyncio.Queue(maxsize=16)  # 并发限制
+app = FastAPI(title="IndexTTS Task Server")
 
-# ==============================
-# 请求体模型
-# ==============================
+# 请求体
 class TTSRequest(BaseModel):
     text: str
 
-# ==============================
-# 后台 Worker
-# ==============================
-async def tts_worker():
-    global tts_model
-    while True:
-        task = await tts_queue.get()
+# 发布任务接口
+@app.post("/tts")
+async def submit_tts(req: TTSRequest):
+    if task_queue.full():
+        raise HTTPException(status_code=429, detail="Server busy. Try later.")
+
+    # 生成任务 ID
+    task_id = str(uuid.uuid4())
+
+    # 保存任务信息
+    task_file = TASK_FOLDER / f"{task_id}.json"
+    task_data = {"id": task_id, "text": req.text, "status": "pending", "result": None}
+    task_file.write_text(json.dumps(task_data))
+
+    # 发布到队列
+    await task_queue.put(task_id)
+
+    return {"task_id": task_id}
+
+# 查询任务状态
+@app.get("/tts/{task_id}")
+def get_task(task_id: str):
+    task_file = TASK_FOLDER / f"{task_id}.json"
+    if not task_file.exists():
+        raise HTTPException(404, "Task not found")
+    task_data = json.loads(task_file.read_text())
+    return task_data
+
+
+# ------------------------------
+# 获取所有任务
+# ------------------------------
+@app.get("/tasks")
+def get_all_tasks():
+    tasks = []
+    for task_file in TASK_FOLDER.glob("*.json"):
         try:
-            text = task["text"]
-            future = task["future"]
-
-            # 放到线程池执行，避免阻塞事件循环
-            wav = await asyncio.to_thread(tts_model.tts, text)
-            future.set_result(wav)
-
+            task_data = json.loads(task_file.read_text())
+            tasks.append(task_data)
         except Exception as e:
-            future.set_exception(e)
-        finally:
-            tts_queue.task_done()
+            print(f"[Warning] Failed to read {task_file}: {e}")
+    return {"total": len(tasks), "tasks": tasks}
 
-# ==============================
-# 启动事件
-# ==============================
+
+# 暴露队列（给 worker 导入使用）
 @app.on_event("startup")
 async def startup():
-    global tts_model
-    print("[startup] Loading IndexTTS model...")
-    tts_model = IndexTTS()
-    print("[startup] Model loaded.")
+    app.state.task_queue = task_queue
+    print("[startup] Task queue initialized.")
 
-    # 启动 1 个后台 worker
-    asyncio.create_task(tts_worker())
-    print("[startup] Worker started.")
-
-# ==============================
-# POST /tts 接口
-# ==============================
-@app.post("/tts")
-async def tts_api(req: TTSRequest):
-    if tts_queue.full():
-        # 并发排队已满 → 返回 429
-        raise HTTPException(status_code=429, detail="TTS server busy. Try again later.")
-
-    loop = asyncio.get_event_loop()
-    future = loop.create_future()
-
-    # 将任务放入队列
-    await tts_queue.put({
-        "text": req.text,
-        "future": future
-    })
-
-    # 等待 worker 执行完
-    wav = await future
-
-    # 返回 base64，方便前端直接播放
-    wav_bytes = wav.astype(np.float32).tobytes()
-    wav_b64 = base64.b64encode(wav_bytes).decode("utf-8")
-
-    return {"samples": len(wav), "wav_base64": wav_b64}
