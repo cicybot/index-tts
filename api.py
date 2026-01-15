@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from typing import Dict, Any, List, Optional
+from pydantic import BaseModel, Field
 
 
 # --------------------
