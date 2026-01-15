@@ -27,36 +27,46 @@ task_queue: asyncio.Queue = asyncio.Queue(maxsize=32)
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
-class TTSParams(BaseModel):
-    # --- 必填 ---
-    text: str = Field(..., description="待生成文本，必填")
-
-    # --- 可选 ---
-    spk_audio_prompt: Optional[str] = Field(None, description="示例音频路径，用于声音克隆")
-    prompt_text: Optional[str] = Field(None, description="参考文本，可选")
-    emo_vector: Optional[List[float]] = Field(
-        None,
-        description="情绪向量 [happy, angry, sad, afraid, disgusted, melancholic, surprised, calm], 长度 8"
-    )
-    cfg_value: Optional[float] = Field(2.0, description="LM guidance，文本约束强度")
-    inference_timesteps: Optional[int] = Field(10, description="LocDiT 推理步数，越高越精细")
-    normalize: Optional[bool] = Field(False, description="是否启用外部 TN 工具")
-    denoise: Optional[bool] = Field(False, description="是否启用外部 Denoise 工具")
-    retry_badcase: Optional[bool] = Field(True, description="是否开启自动重试")
-    retry_badcase_max_times: Optional[int] = Field(3, description="最大重试次数")
-    retry_badcase_ratio_threshold: Optional[float] = Field(6.0, description="重试检测阈值")
-    use_random: Optional[bool] = Field(False, description="是否随机化生成")
-    output_path: Optional[str] = Field(None, description="输出 wav 文件路径，不填自动生成")
-    verbose: Optional[bool] = Field(False, description="是否打印推理日志")
 
 class TTSRequest(BaseModel):
-    """
-    TTS 请求体模型
-    params 字典会直接传给 IndexTTS2.infer。
-    前端可以根据需求传入任意 infer 支持的参数。
-    """
-    params: TTSParams
-
+    params: Dict[str, Any] = Field(
+        ...,
+        description=(
+            "所有可控参数，直接传给 IndexTTS2.infer()\n\n"
+            "可用字段示例:\n"
+            " - text: str, 要合成的文本\n"
+            " - spk_audio_prompt: str, 参考音频路径，用于克隆说话人\n"
+            " - emo_vector: list[float], 8维情感向量 [happy, angry, sad, afraid, disgusted, melancholic, surprised, calm]\n"
+            " - cfg_value: float, LM引导强度，越高越贴合文本\n"
+            " - inference_timesteps: int, LocDiT推理步数，越高效果越好\n"
+            " - normalize: bool, 是否启用外部文本归一化\n"
+            " - denoise: bool, 是否启用降噪\n"
+            " - retry_badcase: bool, 是否重试坏案例\n"
+            " - retry_badcase_max_times: int, 最大重试次数\n"
+            " - retry_badcase_ratio_threshold: float, 坏案例检测长度阈值\n"
+            " - use_random: bool, 是否启用随机性\n"
+            " - output_path: str, 输出wav路径\n"
+            " - verbose: bool, 是否打印详细推理信息\n\n"
+            "示例JSON:\n"
+            "{\n"
+            '  "params": {\n'
+            '    "text": "hello",\n'
+            '    "spk_audio_prompt": "examples/voice_01.wav",\n'
+            '    "emo_vector": [0,0,0,0,0,0,0,0],\n'
+            '    "cfg_value": 2,\n'
+            '    "inference_timesteps": 10,\n'
+            '    "normalize": false,\n'
+            '    "denoise": false,\n'
+            '    "retry_badcase": true,\n'
+            '    "retry_badcase_max_times": 3,\n'
+            '    "retry_badcase_ratio_threshold": 6,\n'
+            '    "use_random": false,\n'
+            '    "output_path": "tasks/output.wav",\n'
+            '    "verbose": true\n'
+            '  }\n'
+            "}"
+        )
+    )
 
 
 # --------------------
