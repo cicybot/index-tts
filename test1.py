@@ -38,32 +38,12 @@ tts.infer(
 )
 torch.cuda.synchronize()
 
-# --------------------
-# Test cases
-# --------------------
-test_list = [
-    "There is no wine in this country, the young man said.",
-    "Translate for me, what is a surprise!"
-]
 
 # --------------------
 # Benchmark
 # --------------------
 print("\n===== TTS Benchmark =====\n")
 
-for i, text in enumerate(test_list, 1):
-    torch.cuda.synchronize()
-    start = time.perf_counter()
-    output_path=f"/content/gen_{i}.wav"
-    tts.infer(
-        spk_audio_prompt='/content/tts/examples/voice_01.wav',
-        text=text,
-        output_path=output_path,
-        verbose=False
-    )
 
-    torch.cuda.synchronize()
-    end = time.perf_counter()
-
-    print(f"[{i}] Text: {text} | output_path:{output_path}")
-    print(f"    ⏱️ Inference time: {end - start:.3f} seconds\n")
+text = "酒楼丧尽天良，开始借机竞拍房间，哎，一群蠢货。"
+tts.infer(spk_audio_prompt='examples/voice_07.wav', text=text, output_path="/content/gen.wav", emo_audio_prompt="/content/tts/examples/emo_sad.wav", verbose=True)
