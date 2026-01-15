@@ -105,6 +105,9 @@ def get_all_tasks():
 # --------------------
 if __name__ == "__main__":
     import uvicorn
-    import worker  # 导入 worker.py 会自动启动 worker
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app,
+                host="0.0.0.0",
+                port=8000,
+                reload=True,    # 开启自动重载
+                workers=1       # 可选，多进程可提高并发，但开发时通常保持 1
+     )
