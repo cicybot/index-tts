@@ -46,4 +46,4 @@ print("\n===== TTS Benchmark =====\n")
 
 
 text = "酒楼丧尽天良，开始借机竞拍房间，哎，一群蠢货。"
-tts.infer(spk_audio_prompt='examples/voice_07.wav', text=text, output_path="/content/gen.wav", emo_audio_prompt="/content/tts/examples/emo_sad.wav", verbose=True)
+tts.infer(spk_audio_prompt='examples/voice_07.wav', text=text, output_path="/content/gen_test_1.wav", emo_audio_prompt="/content/tts/examples/emo_sad.wav", verbose=True)
