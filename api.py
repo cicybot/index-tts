@@ -105,8 +105,9 @@ def get_all_tasks():
 # --------------------
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app,
-                host="0.0.0.0",
-                port=8000,
-                reload=True,    # 开启自动重载
+    uvicorn.run(
+        "api:app",      # 注意这里用字符串：模块名:app
+        host="0.0.0.0",
+        port=8000,
+        reload=True,    # 开启自动重载
      )
