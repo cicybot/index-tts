@@ -4,9 +4,10 @@ import uuid
 import json
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
-from typing import Dict, Any, List, Optional
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
-
+from typing import List, Optional,Dict
 
 # --------------------
 # 任务存储路径
@@ -15,22 +16,28 @@ TASK_FOLDER = Path("./tasks")
 TASK_FOLDER.mkdir(parents=True, exist_ok=True)
 
 # --------------------
+# 静态文件目录（供 /media 使用）
+# --------------------
+MEDIA_FOLDER = Path("./media")
+MEDIA_FOLDER.mkdir(parents=True, exist_ok=True)
+# --------------------
 # FastAPI app
 # --------------------
 app = FastAPI(title="IndexTTS TTS API")
 
-# --------------------
-# 内存任务队列
-# --------------------
-task_queue: asyncio.Queue = asyncio.Queue(maxsize=32)
-
-from pydantic import BaseModel, Field
-from typing import List, Optional
 
 
 class TTSRequest(BaseModel):
     params: Dict[str, Any]
 
+
+
+# --------------------
+# 路由: / 重定向到 /docs
+# --------------------
+@app.get("/", include_in_schema=False)
+def root_redirect():
+    return RedirectResponse(url="/docs")
 
 # --------------------
 # API 接口
@@ -84,8 +91,6 @@ class TTSRequest(BaseModel):
 """
 )
 async def submit_tts(req: TTSRequest):
-    if task_queue.full():
-        raise HTTPException(status_code=429, detail="Server busy")
 
     task_id = str(uuid.uuid4())
     task_data = {
@@ -97,7 +102,6 @@ async def submit_tts(req: TTSRequest):
         "params": req.params
     }
     (TASK_FOLDER / f"{task_id}.json").write_text(json.dumps(task_data))
-    await task_queue.put(task_id)
     return {"task_id": task_id}
 
 
