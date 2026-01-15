@@ -10,8 +10,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
-import urllib.parse
 
+
+TASK_FOLDER = Path("./frontend/dist")
+TASK_FOLDER.mkdir(parents=True, exist_ok=True)
 # --------------------
 # 任务存储路径
 # --------------------
