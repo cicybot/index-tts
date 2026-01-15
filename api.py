@@ -10,7 +10,7 @@ from typing import Dict, Any, List, Optional
 # --------------------
 # 任务存储路径
 # --------------------
-TASK_FOLDER = Path("/tmp/tasks")
+TASK_FOLDER = Path("./tasks")
 TASK_FOLDER.mkdir(parents=True, exist_ok=True)
 
 # --------------------

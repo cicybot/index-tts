@@ -10,7 +10,7 @@ from indextts.infer_v2 import IndexTTS2
 # --------------------
 # 任务存储路径
 # --------------------
-TASK_FOLDER = Path("/tmp/tasks")
+TASK_FOLDER = Path("./tasks")
 TASK_FOLDER.mkdir(parents=True, exist_ok=True)
 
 # --------------------
