@@ -40,7 +40,7 @@ app.add_middleware(
 )
 
 # Mount frontend static files
-app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="frontend")
+# app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="frontend")
 
 
 class TTSRequest(BaseModel):
@@ -111,6 +111,7 @@ class TasksResponse(BaseModel):
 """,
 )
 async def submit_tts(req: TTSRequest):
+    print(f"DEBUG: Received TTS request with params: {req.params}")
     task_id = str(uuid.uuid4())
     task_data = {
         "id": task_id,
@@ -121,6 +122,7 @@ async def submit_tts(req: TTSRequest):
         "params": req.params,
     }
     (TASK_FOLDER / f"{task_id}.json").write_text(json.dumps(task_data))
+    print(f"DEBUG: Created task {task_id}")
     return {"task_id": task_id}
 
 
