@@ -42,61 +42,58 @@ torch.cuda.synchronize()
 print(f"[Worker {WORKER_ID}] Warmup done.")
 
 # --------------------
-# 内存队列（API.py 会传入同一个队列）
+# 异步 worker 循环（扫描本地 JSON 任务）
 # --------------------
-try:
-    from api import task_queue
-except ImportError:
-    task_queue = asyncio.Queue(maxsize=32)
-
-# --------------------
-# 异步 worker 循环
-# --------------------
-async def worker_loop():
+async def worker_loop(poll_interval=1.0):
+    print(f"[Worker {WORKER_ID}] Worker loop started")
     while True:
-        task_id = await task_queue.get()
-        task_file = TASK_FOLDER / f"{task_id}.json"
-        if not task_file.exists():
-            print(f"[Worker {WORKER_ID}] Task {task_id} missing")
-            task_queue.task_done()
-            continue
+        # 查找所有 pending 的任务
+        for task_file in TASK_FOLDER.glob("*.json"):
+            try:
+                task_data = json.loads(task_file.read_text())
+            except Exception as e:
+                print(f"[Worker {WORKER_ID}] Failed to read {task_file}: {e}")
+                continue
 
-        task_data = json.loads(task_file.read_text())
-        task_params = task_data["params"]
+            if task_data.get("status") != "pending":
+                continue  # 已经在处理中或完成
 
-        # 自动生成 output_path
-        if "output_path" not in task_params:
-            task_params["output_path"] = str(TASK_FOLDER / f"{task_id}.wav")
+            task_id = task_data["id"]
+            task_params = task_data["params"]
 
-        task_data["status"] = "running"
-        task_data["worker_id"] = WORKER_ID
-        task_data["start_time"] = time.time()
-        task_file.write_text(json.dumps(task_data))
+            # 自动生成 output_path
+            if "output_path" not in task_params:
+                task_params["output_path"] = str(TASK_FOLDER / f"{task_id}.wav")
 
-        try:
-            await asyncio.to_thread(tts_model.infer, **task_params)
-            task_data["status"] = "done"
-            task_data["result"] = task_params["output_path"]
-            task_data["end_time"] = time.time()
-            task_data["duration"] = task_data["end_time"] - task_data["start_time"]
-            task_file.write_text(json.dumps(task_data))
-            print(f"[Worker {WORKER_ID}] Task {task_id} done in {task_data['duration']:.2f}s")
+            task_data["status"] = "running"
+            task_data["worker_id"] = WORKER_ID
+            task_data["start_time"] = time.time()
+            task_file.write_text(json.dumps(task_data, ensure_ascii=False, indent=2))
 
-        except Exception as e:
-            task_data["status"] = "error"
-            task_data["error"] = str(e)
-            task_data["end_time"] = time.time()
-            task_data["duration"] = task_data["end_time"] - task_data.get("start_time", task_data["end_time"])
-            task_file.write_text(json.dumps(task_data))
-            print(f"[Worker {WORKER_ID}] Task {task_id} error: {e}")
+            print(f"[Worker {WORKER_ID}] Start task {task_id}")
 
-        finally:
-            task_queue.task_done()
-            await asyncio.sleep(0.01)
+            try:
+                await asyncio.to_thread(tts_model.infer, **task_params)
+
+                task_data["status"] = "done"
+                task_data["result"] = task_params["output_path"]
+                task_data["end_time"] = time.time()
+                task_data["duration"] = task_data["end_time"] - task_data["start_time"]
+                task_file.write_text(json.dumps(task_data, ensure_ascii=False, indent=2))
+                print(f"[Worker {WORKER_ID}] Task {task_id} done in {task_data['duration']:.2f}s")
+
+            except Exception as e:
+                task_data["status"] = "error"
+                task_data["error"] = str(e)
+                task_data["end_time"] = time.time()
+                task_data["duration"] = task_data["end_time"] - task_data.get("start_time", task_data["end_time"])
+                task_file.write_text(json.dumps(task_data, ensure_ascii=False, indent=2))
+                print(f"[Worker {WORKER_ID}] Task {task_id} error: {e}")
+
+        await asyncio.sleep(poll_interval)  # 等待一段时间再扫描
 
 # --------------------
 # 启动 worker
 # --------------------
-loop = asyncio.get_event_loop()
-loop.create_task(worker_loop())
-print(f"[Worker {WORKER_ID}] Worker loop started")
+if __name__ == "__main__":
+    asyncio.run(worker_loop())
